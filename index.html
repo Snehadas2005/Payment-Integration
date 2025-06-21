@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stripe Payments Integration</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Payment Integration Demo</h1>
+            <p>Stripe Test Checkout - $2.00 USD</p>
+            <nav class="nav-bar">
+                <button class="nav-link active" data-page="home">🏠 Home</button>
+                <button class="nav-link" data-page="payments">💳 Payments</button>
+            </nav>
+        </header>
+
+        <main>
+            <div id="loading" class="loading-overlay" style="display: none;">
+                <div class="spinner-large"></div>
+                <p>Processing your request...</p>
+            </div>
+
+            <div id="successMessage" class="status-message success" style="display: none;">
+                ✅ Payment successful! Thank you for your purchase.
+            </div>
+            <div id="errorMessage" class="status-message error" style="display: none;">
+                ❌ Payment failed. Please try again.
+            </div>
+
+            <div id="home" class="page active">
+                <div class="product-card">
+                    <h2>Test Product</h2>
+                    <p class="price">$2.00 USD</p>
+                    <p class="description">This is a test product for demonstrating Stripe payment integration.</p>
+                    <button id="checkoutBtn" class="btn btn-primary" onclick="createCheckoutSession()">
+                        🛒 Proceed to Checkout
+                    </button>
+                </div>
+            </div>
+
+            <div id="payments" class="page">
+                <div class="payment-info">
+                    <h2>Payment Processing</h2>
+                    <div class="payment-details">
+                        <div class="detail-row">
+                            <span>Product:</span>
+                            <span>Test Product</span>
+                        </div>
+                        <div class="detail-row">
+                            <span>Amount:</span>
+                            <span class="amount">$2.00 USD</span>
+                        </div>
+                        <div class="detail-row">
+                            <span>Payment Method:</span>
+                            <span>Stripe Checkout</span>
+                        </div>
+                    </div>
+                    <div class="payment-actions">
+                        <button class="btn btn-primary" onclick="createCheckoutSession()">
+                            🔄 Start Payment Process
+                        </button>
+                        <button class="btn btn-secondary" onclick="showPage('home')">
+                            ← Back to Home
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <p>&copy; 2025 Stripe Integration Demo</p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
