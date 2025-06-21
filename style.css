@@ -97,7 +97,6 @@ main {
     font-size: 1.2rem;
 }
 
-/* Status Messages */
 .status-message {
     position: fixed;
     top: 20px;
@@ -297,7 +296,6 @@ footer {
     font-size: 0.9rem;
 }
 
-/* Responsive design */
 @media (max-width: 768px) {
     .container {
         padding: 10px;

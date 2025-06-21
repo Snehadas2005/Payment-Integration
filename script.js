@@ -1,3 +1,5 @@
+// script.js
+
 const AppState = {
     currentPage: 'home',
     isLoading: false,
@@ -8,27 +10,33 @@ function showPage(pageName) {
     document.querySelectorAll('.nav-link').forEach(link => {
         link.classList.remove('active');
     });
-    document.querySelector(`[data-page="${pageName}"]`).classList.add('active');
+    const targetNavLink = document.querySelector(`[data-page="${pageName}"]`);
+    if (targetNavLink) {
+        targetNavLink.classList.add('active');
+    }
 
     document.querySelectorAll('.page').forEach(page => {
         page.classList.remove('active');
     });
-    document.getElementById(pageName).classList.add('active');
+    const targetPage = document.getElementById(pageName);
+    if (targetPage) {
+        targetPage.classList.add('active');
+    }
 
     AppState.currentPage = pageName;
+    const newPath = pageName === 'home' ? '/' : `/${pageName}`;
+    
+    if (window.history && window.history.pushState) {
+        try {
+            window.history.pushState({ page: pageName }, '', newPath);
+        } catch (e) {
+            console.warn('Unable to update browser history:', e);
+        }
+    }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    document.querySelectorAll('.nav-link').forEach(link => {
-        link.addEventListener('click', (e) => {
-            const pageName = e.target.getAttribute('data-page');
-            showPage(pageName);
-        });
-    });
-});
-
 async function createCheckoutSession() {
-    if (AppState.isLoading) return;
+    if (AppState.isLoading) return null;
 
     setLoadingState(true);
     hideStatusMessages();
@@ -56,17 +64,18 @@ async function createCheckoutSession() {
             simulateStripeCheckout(data.sessionId);
         }, 1000);
 
+        return data;
+
     } catch (error) {
         console.error('Error creating checkout session:', error);
         setLoadingState(false);
         showErrorMessage('Failed to create checkout session. Please try again.');
+        throw error;
     }
 }
 
 function simulateStripeCheckout(sessionId) {
     setLoadingState(false);
-    
-    const shouldSucceed = Math.random() > 0.3;
     
     if (confirm(`🎭 SIMULATION MODE\n\nIn production, you would be redirected to:\nhttps://checkout.stripe.com/pay/${sessionId}\n\nFor this demo, simulate payment success?`)) {
         simulateWebhook(true);
@@ -108,39 +117,50 @@ function setLoadingState(isLoading) {
     const checkoutBtn = document.getElementById('checkoutBtn');
     
     if (isLoading) {
-        loadingEl.style.display = 'flex';
-        checkoutBtn.disabled = true;
-        checkoutBtn.textContent = 'Processing...';
+        if (loadingEl) loadingEl.style.display = 'flex';
+        if (checkoutBtn) {
+            checkoutBtn.disabled = true;
+            checkoutBtn.textContent = 'Processing...';
+        }
     } else {
-        loadingEl.style.display = 'none';
-        checkoutBtn.disabled = false;
-        checkoutBtn.textContent = '🛒 Proceed to Checkout';
+        if (loadingEl) loadingEl.style.display = 'none';
+        if (checkoutBtn) {
+            checkoutBtn.disabled = false;
+            checkoutBtn.textContent = '🛒 Proceed to Checkout';
+        }
     }
 }
 
 function showSuccessMessage() {
     hideStatusMessages();
-    document.getElementById('successMessage').style.display = 'block';
-    
-    setTimeout(() => {
-        document.getElementById('successMessage').style.display = 'none';
-    }, 5000);
+    const successEl = document.getElementById('successMessage');
+    if (successEl) {
+        successEl.style.display = 'block';
+        
+        setTimeout(() => {
+            successEl.style.display = 'none';
+        }, 5000);
+    }
 }
 
 function showErrorMessage(message) {
     hideStatusMessages();
-    const errorEl = document.getElementById('errorMessage');  
-    errorEl.textContent = `❌ ${message}`;
-    errorEl.style.display = 'block';
-    
-    setTimeout(() => {
-        errorEl.style.display = 'none';
-    }, 5000);
+    const errorEl = document.getElementById('errorMessage');
+    if (errorEl) {
+        errorEl.textContent = `❌ ${message}`;
+        errorEl.style.display = 'block';
+        
+        setTimeout(() => {
+            errorEl.style.display = 'none';
+        }, 5000);
+    }
 }
 
 function hideStatusMessages() {
-    document.getElementById('successMessage').style.display = 'none';
-    document.getElementById('errorMessage').style.display = 'none';
+    const successEl = document.getElementById('successMessage');
+    const errorEl = document.getElementById('errorMessage');
+    if (successEl) successEl.style.display = 'none';
+    if (errorEl) errorEl.style.display = 'none';
 }
 
 class MockAPIServer {
@@ -184,16 +204,49 @@ class MockAPIServer {
 
 const mockServer = new MockAPIServer();
 
+function initializeRouter() {
+    const path = window.location.pathname;
+    
+    switch (path) {
+        case '/payments':
+            showPage('payments');
+            break;
+        case '/success':
+            showSuccessMessage();
+            showPage('home'); 
+            break;
+        case '/error':
+            showErrorMessage('Payment failed.');
+            showPage('home');
+            break;
+        default:
+            showPage('home');
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     console.log('🚀 Payment Integration Demo Loaded');
     console.log('📁 Project Structure:');
-    console.log('├── index.html (Main application)');
+    console.log('├── index.html');
     console.log('├── /api/create-checkout-session (POST endpoint)');
     console.log('├── /api/stripe-webhook (POST endpoint)');
     console.log('└── /payments (Payment page route)');
     
-    if (window.location.pathname === '/payments') {
-        showPage('payments');
+    document.querySelectorAll('.nav-link').forEach(link => {
+        link.addEventListener('click', (e) => {
+            const pageName = e.target.getAttribute('data-page');
+            if (pageName) showPage(pageName);
+        });
+    });
+    
+    initializeRouter();
+    
+    if (window.history && window.history.replaceState) {
+        try {
+            window.history.replaceState({ page: AppState.currentPage }, '', window.location.pathname);
+        } catch (e) {
+            console.warn('Unable to set initial history state:', e);
+        }
     }
 });
 
@@ -204,180 +257,6 @@ window.addEventListener('popstate', (e) => {
     } else {
         showPage('home');
     }
-});
-
-const originalShowPage = showPage;
-showPage = function(pageName) {
-    originalShowPage(pageName);
-    
-    const newPath = pageName === 'home' ? '/' : `/${pageName}`;
-    window.history.pushState({ page: pageName }, '', newPath);
-};
-
-const paymentButtons = {
-    newPayment: document.getElementById('new-payment-btn'),
-    retryPayment: document.getElementById('retry-payment-btn')
-};
-
-const elements = {
-    checkoutSpinner: document.getElementById('checkout-spinner'),
-    paymentSpinner: document.getElementById('payment-spinner'),
-    paymentMessage: document.getElementById('payment-message')
-};
-
-function showSection(sectionName) {
-    Object.values(sections).forEach(section => {
-        section.classList.remove('active');
-    });
-    sections[sectionName].classList.add('active');
-    
-    const newUrl = sectionName === 'home' ? '/' : `/${sectionName}`;
-    window.history.pushState({ section: sectionName }, '', newUrl);
-}
-
-function setLoadingState(button, isLoading) {
-    if (isLoading) {
-        button.classList.add('loading');
-        button.disabled = true;
-    } else {
-        button.classList.remove('loading');
-        button.disabled = false;
-    }
-}
-
-async function createCheckoutSession() {
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    return {
-        sessionId: 'test_session_123'
-    };
-}
-
-async function simulateStripeWebhook() {
-    await new Promise(resolve => setTimeout(resolve, 3000));
-    
-    const isSuccess = Math.random() > 0.3;
-    
-    return {
-        success: isSuccess
-    };
-}
-
-function handlePaymentsRoute() {
-    showSection('payments');
-    processPayment();
-}
-
-async function processPayment() {
-    try {
-        elements.paymentMessage.textContent = 'Creating checkout session...';
-        
-        const sessionData = await createCheckoutSession();
-        
-        elements.paymentMessage.textContent = 'Redirecting to Stripe...';
-        
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        elements.paymentMessage.textContent = 'Processing payment...';
-        
-        const webhookResult = await simulateStripeWebhook();
-        
-        if (webhookResult.success) {
-            showSection('success');
-        } else {
-            showSection('error');
-        }
-        
-    } catch (error) {
-        console.error('Payment processing error:', error);
-        showSection('error');
-    }
-}
-
-buttons.checkout.addEventListener('click', async () => {
-    setLoadingState(buttons.checkout, true);
-    
-    try {
-        const sessionData = await createCheckoutSession();
-        
-        handlePaymentsRoute();
-        
-    } catch (error) {
-        console.error('Checkout error:', error);
-        alert('Failed to create checkout session. Please try again.');
-    } finally {
-        setLoadingState(buttons.checkout, false);
-    }
-});
-
-buttons.back.addEventListener('click', () => {
-    showSection('home');
-});
-
-buttons.newPayment.addEventListener('click', () => {
-    showSection('home');
-});
-
-buttons.retryPayment.addEventListener('click', () => {
-    showSection('home');
-});
-
-window.addEventListener('popstate', (event) => {
-    const section = event.state?.section || 'home';
-    showSection(section);
-});
-
-function initializeRouter() {
-    const path = window.location.pathname;
-    
-    switch (path) {
-        case '/payments':
-            handlePaymentsRoute();
-            break;
-        case '/success':
-            showSection('success');
-            break;
-        case '/error':
-            showSection('error');
-            break;
-        default:
-            showSection('home');
-    }
-}
-
-async function apiCreateCheckoutSession() {
-    const response = await fetch('/api/create-checkout-session', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            amount: 200,
-            currency: 'usd'
-        })
-    });
-    
-    return response.json();
-}
-
-async function apiStripeWebhook(sessionId) {
-    const response = await fetch('/api/stripe-webhook', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            sessionId: sessionId
-        })
-    });
-    
-    return response.json();
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-    initializeRouter();
-    
-    window.history.replaceState({ section: 'home' }, '', window.location.pathname);
 });
 
 console.log('Stripe Payments Integration Demo');
